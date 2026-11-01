@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listen and Click - Sequence Memory Game</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Balsamiq Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Balsamiq+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Balsamiq Sans"', 'cursive', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            purple: '#4834D4',
+                            pink: '#EB4D4B',
+                            yellow: '#F0932B',
+                            green: '#6AB04C',
+                            blue: '#0984E3',
+                            orange: '#E17055',
+                            dark: '#1E272E',
+                            light: '#D2DAE2',
+                            bg: '#F1F2F6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Balsamiq Sans', cursive, sans-serif;
+            background-color: #E2E8F0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Tile active click animation */
+        .tile-active {
+            transform: scale(0.95);
+            filter: brightness(1.3);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 1);
+            border-color: #ffffff !important;
+        }
+
+        .tile-clickable {
+            cursor: pointer;
+            transition: transform 0.1s ease, filter 0.1s ease, box-shadow 0.1s ease;
+        }
+        .tile-clickable:hover {
+            transform: translateY(-4px);
+            filter: brightness(1.1);
+        }
+        .tile-clickable:active {
+            transform: translateY(2px) scale(0.97);
+        }
+
+        /* Modal backdrop blur */
+        .backdrop-blur-custom {
+            backdrop-filter: blur(8px);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col text-slate-800">
+
+    <!-- TOP NAV / HEADER BAR -->
+    <header class="bg-white border-b-4 border-slate-300 px-6 py-3 flex justify-between items-center z-10 shadow-md shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-brand-purple text-white p-2.5 rounded-2xl shadow flex items-center justify-center w-12 h-12">
+                <i class="fa-solid fa-headphones"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 leading-tight">Listen &amp; Click</h1>
+                <p class="text-xs text-slate-600 font-bold tracking-wide">CLASSROOM MEMORY SEQUENCE GAME</p>
+            </div>
+        </div>
+
+        <!-- Global Timer, Audio BGM & Controls -->
+        <div class="flex items-center gap-3">
+            <!-- Audio Toggle Button -->
+            <button id="btn-toggle-bgm" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border-2 border-slate-300 font-bold px-3 py-2 rounded-xl text-base transition flex items-center gap-2">
+                <i id="bgm-icon" class="fa-solid fa-music text-slate-400"></i> Music: <span id="bgm-status">OFF</span>
+            </button>
+
+            <div id="game-timer-display" class="bg-slate-900 border-2 border-slate-900 text-yellow-400 font-bold px-4 py-2 rounded-xl text-xl flex items-center gap-2 shadow">
+                <i class="fa-regular fa-clock text-yellow-400"></i>
+                <span id="timer-text">00:00</span>
+            </div>
+            <!-- Fullscreen Toggle Button -->
+            <button id="btn-fullscreen" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border-2 border-slate-300 font-bold px-3 py-2 rounded-xl text-base transition flex items-center gap-2" title="Toggle Fullscreen">
+                <i class="fa-solid fa-expand text-brand-purple"></i> <span class="hidden sm:inline">Fullscreen</span>
+            </button>
+            <button id="btn-open-settings" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border-2 border-slate-300 font-bold px-3 py-2 rounded-xl text-base transition flex items-center gap-2">
+                <i class="fa-solid fa-gear text-slate-600"></i> Settings
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT SPLIT SCREEN -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden p-4 gap-4 h-[calc(100vh-80px)]">
+
+        <!-- LEFT PANEL: CONTROL & SCOREBOARD -->
+        <section class="w-full md:w-80 lg:w-96 bg-white rounded-3xl border-4 border-slate-300 shadow-md flex flex-col overflow-hidden shrink-0">
+            <!-- Header -->
+            <div class="bg-slate-900 text-white p-4 border-b-2 border-slate-900 flex justify-between items-center">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-trophy text-brand-yellow"></i> Scoreboard
+                </h2>
+                <span id="status-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-200 uppercase tracking-wider">
+                    Idle
+                </span>
+            </div>
+
+            <!-- Group Scores List -->
+            <div id="group-scores-list" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <!-- Group cards generated dynamically -->
+            </div>
+
+            <!-- Turn Notice & Big Start Button Below Leaderboard -->
+            <div class="p-4 bg-slate-100 border-t-2 border-slate-300 space-y-3">
+                <div id="current-group-turn-card" class="bg-white p-3 rounded-2xl border-2 border-slate-300 shadow-sm flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Select Turn:</span>
+                    <select id="select-active-turn" class="font-extrabold text-brand-purple text-base bg-slate-100 border border-slate-300 rounded-lg px-2 py-1 outline-none cursor-pointer">
+                        <!-- Dynamic group choices -->
+                    </select>
+                </div>
+
+                <!-- Big Start Button directly under leaderboard -->
+                <button id="btn-start-game" class="w-full bg-brand-green hover:bg-green-600 text-white font-extrabold py-3 px-4 rounded-2xl text-xl shadow-lg transition flex items-center justify-center gap-2 border-b-4 border-green-800 active:border-b-0">
+                    <i class="fa-solid fa-play"></i> Start Turn / Game
+                </button>
+            </div>
+        </section>
+
+        <!-- RIGHT PANEL: GAME BOARD & INTERACTION -->
+        <section class="flex-1 bg-white rounded-3xl border-4 border-slate-300 shadow-md flex flex-col overflow-hidden p-4 md:p-6 relative justify-between">
+            
+            <!-- Game Progress Header -->
+            <div class="flex justify-between items-center bg-slate-900 text-white p-4 rounded-2xl border-2 border-slate-900 shrink-0 shadow-sm">
+                <div class="flex items-center gap-6">
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Round</span>
+                        <span id="round-indicator" class="text-2xl font-bold text-brand-yellow">Round 1 / 3</span>
+                    </div>
+                    <div class="h-8 w-0.5 bg-slate-700"></div>
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Question</span>
+                        <span id="question-indicator" class="text-2xl font-bold text-emerald-400">Question 1 / 5</span>
+                    </div>
+                </div>
+                <div class="text-xs sm:text-sm font-bold text-red-400 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+                    <i class="fa-solid fa-triangle-exclamation text-brand-yellow mr-1"></i> Wrong Answer = +5s Penalty
+                </div>
+            </div>
+
+            <!-- Visual Feedback Notification Overlay -->
+            <div id="feedback-overlay" class="hidden absolute inset-0 bg-white/95 z-20 flex-col items-center justify-center text-center p-6 backdrop-blur-custom rounded-3xl">
+                <div id="feedback-icon-box" class="w-24 h-24 rounded-full flex items-center justify-center text-5xl text-white mb-4 shadow-lg">
+                    <i id="feedback-icon" class="fa-solid fa-check"></i>
+                </div>
+                <h3 id="feedback-title" class="text-4xl font-extrabold text-slate-900 mb-2">Great Job!</h3>
+                <p id="feedback-subtitle" class="text-xl text-slate-700 font-bold mb-6">Moving to the next question...</p>
+            </div>
+
+            <!-- 2x2 TILE GRID CONTAINER (AUTO RESPONSIVE SIZING) -->
+            <div class="my-auto py-2 flex-1 flex items-center justify-center overflow-hidden w-full h-full">
+                <div id="tiles-grid" class="grid grid-cols-2 gap-4 w-full h-full max-w-[85vh] max-h-[85vh] p-2">
+                    <!-- 4 Interactive Tiles dynamically shuffled per question -->
+                </div>
+            </div>
+
+            <!-- Bottom Instruction Banner -->
+            <div class="text-center text-slate-600 text-sm font-extrabold shrink-0">
+                <span id="bottom-instruction"><i class="fa-solid fa-headphones mr-1 text-brand-purple"></i> Listen to the audio sequence carefully and click the matching tiles!</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- START / INSTRUCTIONS MODAL -->
+    <div id="start-modal" class="hidden fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 backdrop-blur-custom">
+        <div class="bg-white rounded-3xl border-4 border-slate-300 max-w-lg w-full p-6 shadow-2xl relative">
+            <h2 class="text-3xl font-bold text-slate-900 mb-4 flex items-center gap-3">
+                <i class="fa-solid fa-gamepad text-brand-purple"></i> Start Player Turn
+            </h2>
+
+            <div class="space-y-4 mb-6">
+                <div class="bg-slate-100 p-4 rounded-2xl border-2 border-slate-300">
+                    <h3 class="font-extrabold text-slate-800 mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-users text-brand-blue"></i> Group Turn Information
+                    </h3>
+                    <p class="text-slate-700 text-sm font-bold">
+                        Current Group: <strong id="modal-turn-group-name" class="text-brand-purple text-lg">Group 1</strong>
+                    </p>
+                    <p class="text-slate-600 text-xs mt-1">
+                        All players will take turns completing each round. Round points are awarded after everyone finishes!
+                    </p>
+                </div>
+
+                <div class="bg-amber-100 p-4 rounded-2xl border-2 border-amber-300 text-amber-900 text-sm font-bold">
+                    <i class="fa-solid fa-stopwatch mr-1 text-brand-orange"></i>
+                    <strong>Rules &amp; Penalties:</strong> Each wrong answer adds a <strong>+5 seconds penalty</strong> to the group's round completion time.
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button id="btn-cancel-start" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 rounded-2xl text-lg border-2 border-slate-300">
+                    Cancel
+                </button>
+                <button id="btn-confirm-start" class="flex-1 bg-brand-green hover:bg-green-600 text-white font-extrabold py-3 px-6 rounded-2xl text-lg shadow-lg flex items-center justify-center gap-2 border-b-4 border-green-800 active:border-b-0">
+                    <i class="fa-solid fa-play"></i> Start Turn
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROUND WINNER MODAL -->
+    <div id="round-winner-modal" class="hidden fixed inset-0 bg-slate-950/85 z-50 flex items-center justify-center p-4 backdrop-blur-custom">
+        <div class="bg-white rounded-3xl border-4 border-slate-300 max-w-xl w-full p-6 shadow-2xl relative text-center">
+            <div class="w-16 h-16 bg-brand-yellow text-slate-900 rounded-full flex items-center justify-center text-3xl mx-auto mb-3 border-4 border-slate-900 shadow-md">
+                <i class="fa-solid fa-award"></i>
+            </div>
+            <h2 id="round-winner-title" class="text-3xl font-extrabold text-slate-900 mb-1">Round 1 Complete!</h2>
+            <p class="text-slate-600 font-bold text-sm mb-4">Round Rankings &amp; Points Awarded</p>
+
+            <div class="bg-slate-100 rounded-2xl border-2 border-slate-300 overflow-hidden mb-6">
+                <table class="w-full text-left text-slate-800">
+                    <thead class="bg-slate-900 text-white text-xs uppercase font-extrabold">
+                        <tr>
+                            <th class="p-3 text-center">Rank</th>
+                            <th class="p-3">Group</th>
+                            <th class="p-3 text-center">Round Time</th>
+                            <th class="p-3 text-center">Points</th>
+                        </tr>
+                    </thead>
+                    <tbody id="round-leaderboard-body" class="divide-y divide-slate-200 text-sm font-bold">
+                        <!-- Dynamic round standings -->
+                    </tbody>
+                </table>
+            </div>
+
+            <button id="btn-next-round" class="w-full bg-brand-purple hover:bg-indigo-700 text-white font-extrabold py-3.5 px-6 rounded-2xl text-xl shadow-lg transition border-b-4 border-indigo-900 active:border-b-0">
+                Continue Game <i class="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- DASHBOARD / SETTINGS MODAL -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 backdrop-blur-custom overflow-y-auto">
+        <div class="bg-white rounded-3xl border-4 border-slate-300 max-w-3xl w-full p-6 shadow-2xl my-8 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center pb-4 border-b-2 border-slate-300 mb-4 shrink-0">
+                <h2 class="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-brand-purple"></i> Teacher Dashboard &amp; Settings
+                </h2>
+                <button id="btn-close-settings" class="text-slate-500 hover:text-slate-800 text-2xl font-bold w-10 h-10 rounded-xl hover:bg-slate-200 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-6 pr-2">
+                <!-- Group Settings -->
+                <div class="bg-slate-100 p-4 rounded-2xl border-2 border-slate-300 space-y-3">
+                    <h3 class="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+                        <i class="fa-solid fa-users text-brand-blue"></i> Group Configuration
+                    </h3>
+                    <div class="flex items-center gap-4">
+                        <label class="text-sm font-bold text-slate-700">Number of Groups:</label>
+                        <select id="setting-num-groups" class="bg-white border-2 border-slate-300 rounded-xl px-3 py-1.5 font-bold text-slate-800">
+                            <option value="2">2 Groups</option>
+                            <option value="3" selected>3 Groups</option>
+                            <option value="4">4 Groups</option>
+                            <option value="5">5 Groups</option>
+                        </select>
+                    </div>
+                    <div id="group-names-container" class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                        <!-- Dynamic group inputs -->
+                    </div>
+                </div>
+
+                <!-- Per-Round Rules (Fixed 3 Rounds) -->
+                <div class="bg-slate-100 p-4 rounded-2xl border-2 border-slate-300 space-y-4">
+                    <h3 class="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group text-brand-orange"></i> Round Settings (Fixed 3 Rounds)
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Round 1 -->
+                        <div class="bg-white p-3 rounded-xl border-2 border-slate-300 space-y-2">
+                            <h4 class="font-bold text-brand-purple text-sm border-b border-slate-200 pb-1">Round 1</h4>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600">Questions</label>
+                                <input type="number" id="setting-r1-q" min="1" max="10" value="5" class="w-full border-2 border-slate-300 rounded-lg px-2 py-1 font-bold text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600">Sequence Length</label>
+                                <input type="number" id="setting-r1-len" min="2" max="8" value="3" class="w-full border-2 border-slate-300 rounded-lg px-2 py-1 font-bold text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Round 2 -->
+                        <div class="bg-white p-3 rounded-xl border-2 border-slate-300 space-y-2">
+                            <h4 class="font-bold text-brand-blue text-sm border-b border-slate-200 pb-1">Round 2</h4>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600">Questions</label>
+                                <input type="number" id="setting-r2-q" min="1" max="10" value="5" class="w-full border-2 border-slate-300 rounded-lg px-2 py-1 font-bold text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600">Sequence Length</label>
+                                <input type="number" id="setting-r2-len" min="2" max="8" value="4" class="w-full border-2 border-slate-300 rounded-lg px-2 py-1 font-bold text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Round 3 -->
+                        <div class="bg-white p-3 rounded-xl border-2 border-slate-300 space-y-2">
+                            <h4 class="font-bold text-brand-pink text-sm border-b border-slate-200 pb-1">Round 3</h4>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600">Questions</label>
+                                <input type="number" id="setting-r3-q" min="1" max="10" value="5" class="w-full border-2 border-slate-300 rounded-lg px-2 py-1 font-bold text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600">Sequence Length</label>
+                                <input type="number" id="setting-r3-len" min="2" max="8" value="5" class="w-full border-2 border-slate-300 rounded-lg px-2 py-1 font-bold text-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tile Content Configuration (Combined Color/Text & Photo with Optional Text) -->
+                <div class="bg-slate-100 p-4 rounded-2xl border-2 border-slate-300 space-y-4">
+                    <div class="flex flex-wrap justify-between items-center gap-2">
+                        <h3 class="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+                            <i class="fa-solid fa-shapes text-brand-pink"></i> Vocabulary &amp; Solid Colors
+                        </h3>
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-1 rounded-xl border border-slate-300 text-xs font-bold text-slate-800">
+                                <input type="checkbox" id="setting-show-text" class="w-4 h-4 text-brand-purple rounded">
+                                Show Text on Tiles
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-slate-600">Mode:</span>
+                                <select id="setting-tile-type" class="bg-white border-2 border-slate-300 rounded-xl px-3 py-1 font-bold text-slate-800">
+                                    <option value="text">Text &amp; Solid Colors</option>
+                                    <option value="photo">Photos / Images</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Config entries -->
+                    <div id="tile-config-list" class="space-y-3">
+                        <!-- Dynamic inputs -->
+                    </div>
+                </div>
+
+                <!-- JSON Backup -->
+                <div class="bg-slate-100 p-4 rounded-2xl border-2 border-slate-300 flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                        <h4 class="font-bold text-slate-800">Preset Settings File</h4>
+                        <p class="text-xs text-slate-600">Save or load configurations as JSON files.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="btn-export-json" class="bg-white hover:bg-slate-200 border-2 border-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-download"></i> Export JSON
+                        </button>
+                        <button id="btn-import-json-trigger" class="bg-white hover:bg-slate-200 border-2 border-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-upload"></i> Import JSON
+                        </button>
+                        <input type="file" id="file-import-json" accept=".json" class="hidden">
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t-2 border-slate-300 flex justify-end gap-3 shrink-0">
+                <button id="btn-save-settings" class="bg-brand-purple hover:bg-indigo-700 text-white font-extrabold px-6 py-2.5 rounded-2xl text-lg shadow-md transition">
+                    Save &amp; Apply Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FINAL RESULTS / WINNER ANNOUNCEMENT MODAL -->
+    <div id="results-modal" class="hidden fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 backdrop-blur-custom">
+        <div class="bg-white rounded-3xl border-4 border-slate-300 max-w-2xl w-full p-8 shadow-2xl relative text-center overflow-hidden">
+            <div class="relative z-10">
+                <div class="w-20 h-20 bg-brand-yellow text-slate-900 rounded-full flex items-center justify-center text-4xl mx-auto mb-3 shadow-lg border-4 border-slate-900 animate-bounce">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <h2 class="text-4xl font-extrabold text-slate-900 mb-1">Game Completed!</h2>
+                <p class="text-slate-600 font-bold mb-6">Final Cumulative Leaderboard &amp; Points Champion</p>
+
+                <!-- Winner Spotlight -->
+                <div id="winner-spotlight" class="bg-amber-300 border-4 border-slate-900 p-4 rounded-2xl mb-6 shadow-md">
+                    <span class="text-xs font-black text-slate-900 uppercase tracking-widest block">🎉 OVERALL WINNER 🎉</span>
+                    <h3 id="winner-name" class="text-4xl font-black text-slate-900 my-1">Group 1</h3>
+                    <p id="winner-score-text" class="text-slate-900 font-extrabold text-lg">Total Round Points: 9 Points</p>
+                </div>
+
+                <!-- Standings Table -->
+                <div class="bg-slate-100 rounded-2xl border-2 border-slate-300 overflow-hidden mb-6">
+                    <table class="w-full text-left text-slate-800 border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 text-white text-xs uppercase font-extrabold">
+                                <th class="p-3 text-center">Rank</th>
+                                <th class="p-3">Group</th>
+                                <th class="p-3 text-center">Total Time</th>
+                                <th class="p-3 text-center">Penalties</th>
+                                <th class="p-3 text-center">Total Points</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-table-body" class="divide-y divide-slate-200 text-sm font-bold">
+                            <!-- Dynamic ranking rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <button id="btn-play-again" class="bg-brand-green hover:bg-green-600 text-white font-extrabold py-3.5 px-8 rounded-2xl text-xl shadow-lg transition border-b-4 border-green-800 active:border-b-0">
+                    <i class="fa-solid fa-rotate-right mr-2"></i> Play New Game
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO SYNTHESIS & ENGINE SCRIPT -->
+    <script>
+        // Solid Vibrant Color Palette (No Pastels)
+        const SOLID_PALETTE = ['#EB4D4B', '#0984E3', '#6AB04C', '#F0932B', '#4834D4', '#E17055', '#B100E8', '#00CEC9'];
+
+        // Preset Vocab Lists with Solid Colors
+        const DEFAULT_TILES = {
+            text: [
+                { id: '1', text: 'Red', color: '#EB4D4B' },
+                { id: '2', text: 'Blue', color: '#0984E3' },
+                { id: '3', text: 'Green', color: '#6AB04C' },
+                { id: '4', text: 'Yellow', color: '#F0932B' },
+                { id: '5', text: 'Purple', color: '#4834D4' },
+                { id: '6', text: 'Orange', color: '#E17055' }
+            ],
+            photo: [
+                { id: '1', text: 'Dog', image: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=300&auto=format&fit=crop&q=80', color: '#EB4D4B' },
+                { id: '2', text: 'Cat', image: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=300&auto=format&fit=crop&q=80', color: '#0984E3' },
+                { id: '3', text: 'Panda', image: 'https://images.unsplash.com/photo-1564349683136-77e08dba1ef9?w=300&auto=format&fit=crop&q=80', color: '#6AB04C' },
+                { id: '4', text: 'Lion', image: 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=300&auto=format&fit=crop&q=80', color: '#F0932B' }
+            ]
+        };
+
+        // Global Configuration
+        let config = {
+            numGroups: 3,
+            showTextOnTiles: true,
+            groups: [
+                { id: 1, name: 'Group 1' },
+                { id: 2, name: 'Group 2' },
+                { id: 3, name: 'Group 3' }
+            ],
+            rounds: {
+                1: { questions: 5, length: 3 },
+                2: { questions: 5, length: 4 },
+                3: { questions: 5, length: 5 }
+            },
+            tileType: 'text',
+            tiles: [...DEFAULT_TILES.text]
+        };
+
+        // Active Game State
+        let gameState = {
+            isRunning: false,
+            isTurnActive: false,
+            currentRound: 1,
+            currentQuestion: 1,
+            activeGroupId: 1,
+            completedGroupIdsThisRound: [],
+            isComputerSpeaking: false,
+            currentSequence: [],
+            displayedTiles: [],
+            studentInput: [],
+            timerInterval: null,
+            elapsedSeconds: 0,
+            bgmPlaying: false,
+            bgmOscillators: [],
+            groupStats: {}
+        };
+
+        const synth = window.speechSynthesis;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Advanced Synthesizer Audio Effects
+        function playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.15) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {}
+        }
+
+        function playTileSound(index) {
+            const freqs = [329.63, 392.00, 523.25, 659.25, 783.99, 880.00];
+            playTone(freqs[index % freqs.length] || 440, 'triangle', 0.18, 0.2);
+        }
+
+        function playCorrectSound() {
+            playTone(523.25, 'triangle', 0.12, 0.2);
+            setTimeout(() => playTone(659.25, 'triangle', 0.12, 0.2), 100);
+            setTimeout(() => playTone(783.99, 'triangle', 0.25, 0.25), 200);
+        }
+
+        function playErrorSound() {
+            playTone(220, 'sawtooth', 0.2, 0.3);
+            setTimeout(() => playTone(164.81, 'sawtooth', 0.35, 0.3), 150);
+        }
+
+        function playFanfareSound() {
+            const notes = [440, 554.37, 659.25, 880];
+            notes.forEach((freq, idx) => {
+                setTimeout(() => playTone(freq, 'square', 0.25, 0.2), idx * 120);
+            });
+        }
+
+        // BGM Synthesizer (Simple upbeat ambient loop)
+        let bgmTimer = null;
+        function toggleBGM() {
+            gameState.bgmPlaying = !gameState.bgmPlaying;
+            const btnIcon = document.getElementById('bgm-icon');
+            const btnStatus = document.getElementById('bgm-status');
+
+            if (gameState.bgmPlaying) {
+                btnIcon.className = 'fa-solid fa-volume-high text-brand-green animate-pulse';
+                btnStatus.textContent = 'ON';
+                startBGMLoop();
+            } else {
+                btnIcon.className = 'fa-solid fa-music text-slate-400';
+                btnStatus.textContent = 'OFF';
+                stopBGMLoop();
+            }
+        }
+
+        function startBGMLoop() {
+            stopBGMLoop();
+            const notes = [261.63, 329.63, 392.00, 329.63, 293.66, 349.23, 392.00, 349.23];
+            let noteIdx = 0;
+            bgmTimer = setInterval(() => {
+                if (!gameState.bgmPlaying) return;
+                playTone(notes[noteIdx], 'sine', 0.25, 0.03);
+                noteIdx = (noteIdx + 1) % notes.length;
+            }, 400);
+        }
+
+        function stopBGMLoop() {
+            if (bgmTimer) clearInterval(bgmTimer);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initScores();
+            renderGroupScores();
+            updateTurnDisplay();
+            prepareQuestionTiles();
+            setupEventListeners();
+        });
+
+        function initScores() {
+            gameState.groupStats = {};
+            config.groups.forEach(g => {
+                gameState.groupStats[g.id] = {
+                    totalPoints: 0,
+                    roundStats: {
+                        1: { rawSeconds: 0, penaltySeconds: 0, points: 0, completed: false },
+                        2: { rawSeconds: 0, penaltySeconds: 0, points: 0, completed: false },
+                        3: { rawSeconds: 0, penaltySeconds: 0, points: 0, completed: false }
+                    }
+                };
+            });
+        }
+
+        function renderGroupScores() {
+            const container = document.getElementById('group-scores-list');
+            container.innerHTML = '';
+
+            config.groups.forEach(group => {
+                const stats = gameState.groupStats[group.id] || { totalPoints: 0, roundStats: {} };
+                const currentRoundStat = stats.roundStats[gameState.currentRound] || { rawSeconds: 0, penaltySeconds: 0 };
+                const isActive = gameState.activeGroupId === group.id && gameState.isTurnActive;
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-2xl border-4 transition-all ${
+                    isActive 
+                        ? 'bg-purple-50 border-brand-purple shadow-lg' 
+                        : 'bg-white border-slate-300 hover:border-slate-400'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full ${isActive ? 'bg-brand-purple animate-ping' : 'bg-slate-300'}"></span>
+                            <span class="font-extrabold text-slate-900 text-lg">${escapeHtml(group.name)}</span>
+                        </div>
+                        <span class="text-xs px-2.5 py-1 rounded-full font-black ${isActive ? 'bg-brand-purple text-white' : 'bg-slate-200 text-slate-700'}">
+                            ${stats.totalPoints} PTS
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-200 mt-1">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-600 font-bold">R${gameState.currentRound} Penalty: <strong class="text-brand-pink">+${currentRoundStat.penaltySeconds}s</strong></span>
+                            <!-- Manual Penalty Button -->
+                            <button onclick="addManualPenalty(${group.id})" title="Add 5 seconds penalty" class="bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 text-xs font-black px-1.5 py-0.5 rounded-lg transition">
+                                +5s
+                            </button>
+                        </div>
+                        <span class="text-slate-700 font-extrabold">R${gameState.currentRound} Time: <strong>${formatTime(currentRoundStat.rawSeconds + currentRoundStat.penaltySeconds)}</strong></span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        window.addManualPenalty = function(groupId) {
+            const currentRoundStat = gameState.groupStats[groupId]?.roundStats[gameState.currentRound];
+            if (currentRoundStat) {
+                currentRoundStat.penaltySeconds += 5;
+                renderGroupScores();
+            }
+        };
+
+        function updateTurnDisplay() {
+            const selectEl = document.getElementById('select-active-turn');
+            selectEl.innerHTML = '';
+            config.groups.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = g.name;
+                if (g.id === gameState.activeGroupId) opt.selected = true;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function prepareQuestionTiles() {
+            const pool = [...config.tiles];
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            gameState.displayedTiles = pool.slice(0, 4);
+            renderGridTiles();
+        }
+
+        function renderGridTiles() {
+            const grid = document.getElementById('tiles-grid');
+            grid.innerHTML = '';
+
+            gameState.displayedTiles.forEach((tile, index) => {
+                const btn = document.createElement('button');
+                btn.id = `tile-${index}`;
+                btn.className = `rounded-3xl border-4 border-slate-900 shadow-md flex flex-col items-center justify-center p-3 relative overflow-hidden transition-all duration-150 tile-clickable select-none w-full h-full`;
+                
+                const bgColor = tile.color || SOLID_PALETTE[index % SOLID_PALETTE.length];
+                btn.style.backgroundColor = bgColor;
+
+                const showText = config.showTextOnTiles !== false;
+
+                if (config.tileType === 'photo' && tile.image) {
+                    btn.innerHTML = `
+                        <div class="w-full h-full flex flex-col items-center justify-center pointer-events-none p-1">
+                            <img src="${tile.image}" alt="${escapeHtml(tile.text || '')}" class="max-w-full max-h-[75%] object-contain rounded-2xl drop-shadow-md mb-1" onerror="this.src='https://placehold.co/200x200/222222/ffffff?text=Image'">
+                            ${(showText && tile.text) ? `<span class="text-base md:text-xl font-black text-white drop-shadow-lg bg-black/60 px-3 py-0.5 rounded-full">${escapeHtml(tile.text)}</span>` : ''}
+                        </div>
+                    `;
+                } else {
+                    btn.innerHTML = `
+                        <div class="pointer-events-none text-center">
+                            ${showText ? `<span class="text-3xl md:text-5xl font-black text-white drop-shadow-lg tracking-wide block">${escapeHtml(tile.text || 'Item')}</span>` : ''}
+                        </div>
+                    `;
+                }
+
+                btn.onclick = () => handleTileClick(index);
+                btn.ontouchstart = (e) => {
+                    e.preventDefault();
+                    handleTileClick(index);
+                };
+
+                grid.appendChild(btn);
+            });
+        }
+
+        function handleTileClick(tileIndex) {
+            if (!gameState.isRunning || !gameState.isTurnActive || gameState.isComputerSpeaking) return;
+
+            const clickedTile = gameState.displayedTiles[tileIndex];
+            if (!clickedTile) return;
+
+            animateTileClick(tileIndex);
+            if (clickedTile.text) speakWord(clickedTile.text);
+
+            gameState.studentInput.push(clickedTile);
+            const step = gameState.studentInput.length - 1;
+
+            if (gameState.studentInput[step].id !== gameState.currentSequence[step].id) {
+                handleIncorrectAnswer();
+                return;
+            }
+
+            if (gameState.studentInput.length === gameState.currentSequence.length) {
+                handleCorrectAnswer();
+            }
+        }
+
+        function speakWord(text, isLastInSequence = false) {
+            return new Promise((resolve) => {
+                if (!('speechSynthesis' in window) || !text) {
+                    if (isLastInSequence) gameState.isComputerSpeaking = false;
+                    resolve();
+                    return;
+                }
+                synth.cancel();
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.95;
+                utterance.pitch = 1.1;
+
+                utterance.onend = () => {
+                    if (isLastInSequence) gameState.isComputerSpeaking = false;
+                    resolve();
+                };
+                utterance.onerror = () => {
+                    if (isLastInSequence) gameState.isComputerSpeaking = false;
+                    resolve();
+                };
+
+                synth.speak(utterance);
+            });
+        }
+
+        async function playSequence() {
+            gameState.isComputerSpeaking = true;
+            gameState.studentInput = [];
+
+            prepareQuestionTiles();
+
+            const roundRules = config.rounds[gameState.currentRound] || { length: 4 };
+            gameState.currentSequence = [];
+            
+            for (let i = 0; i < roundRules.length; i++) {
+                const randIndex = Math.floor(Math.random() * gameState.displayedTiles.length);
+                gameState.currentSequence.push(gameState.displayedTiles[randIndex]);
+            }
+
+            await new Promise(r => setTimeout(r, 600));
+
+            for (let i = 0; i < gameState.currentSequence.length; i++) {
+                if (!gameState.isRunning || !gameState.isTurnActive) return;
+                const tileObj = gameState.currentSequence[i];
+                const isLastWord = (i === gameState.currentSequence.length - 1);
+
+                if (tileObj.text) {
+                    await speakWord(tileObj.text, isLastWord);
+                } else {
+                    playTone(400 + (i * 100), 'sine', 0.4, 0.2);
+                    if (isLastWord) gameState.isComputerSpeaking = false;
+                    await new Promise(r => setTimeout(r, 450));
+                }
+
+                if (!isLastWord) {
+                    await new Promise(r => setTimeout(r, 300));
+                }
+            }
+        }
+
+        function animateTileClick(index) {
+            const tileEl = document.getElementById(`tile-${index}`);
+            if (tileEl) {
+                tileEl.classList.add('tile-active');
+                playTileSound(index);
+                setTimeout(() => tileEl.classList.remove('tile-active'), 200);
+            }
+        }
+
+        function handleCorrectAnswer() {
+            playCorrectSound();
+            showFeedback(true, "Correct!", "Great memory!");
+
+            setTimeout(() => {
+                hideFeedback();
+                const roundRules = config.rounds[gameState.currentRound] || { questions: 5 };
+                gameState.currentQuestion++;
+
+                if (gameState.currentQuestion > roundRules.questions) {
+                    completeGroupTurn();
+                } else {
+                    updateIndicators();
+                    playSequence();
+                }
+            }, 1200);
+        }
+
+        function handleIncorrectAnswer() {
+            playErrorSound();
+            
+            const currentRoundStat = gameState.groupStats[gameState.activeGroupId]?.roundStats[gameState.currentRound];
+            if (currentRoundStat) {
+                currentRoundStat.penaltySeconds += 5;
+                renderGroupScores();
+            }
+
+            showFeedback(false, "Try Again!", "+5s Penalty! Generating new sequence...");
+
+            setTimeout(() => {
+                hideFeedback();
+                playSequence();
+            }, 1400);
+        }
+
+        function showFeedback(isCorrect, title, subtitle) {
+            const overlay = document.getElementById('feedback-overlay');
+            const iconBox = document.getElementById('feedback-icon-box');
+            const icon = document.getElementById('feedback-icon');
+
+            document.getElementById('feedback-title').textContent = title;
+            document.getElementById('feedback-subtitle').textContent = subtitle;
+
+            if (isCorrect) {
+                iconBox.className = 'w-24 h-24 rounded-full flex items-center justify-center text-5xl text-white mb-4 shadow-lg bg-brand-green border-4 border-slate-900';
+                icon.className = 'fa-solid fa-check';
+            } else {
+                iconBox.className = 'w-24 h-24 rounded-full flex items-center justify-center text-5xl text-white mb-4 shadow-lg bg-brand-pink border-4 border-slate-900';
+                icon.className = 'fa-solid fa-xmark';
+            }
+
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+
+        function hideFeedback() {
+            const overlay = document.getElementById('feedback-overlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
+
+        function completeGroupTurn() {
+            gameState.isTurnActive = false;
+            clearInterval(gameState.timerInterval);
+
+            const currentRoundStat = gameState.groupStats[gameState.activeGroupId].roundStats[gameState.currentRound];
+            currentRoundStat.completed = true;
+
+            if (!gameState.completedGroupIdsThisRound.includes(gameState.activeGroupId)) {
+                gameState.completedGroupIdsThisRound.push(gameState.activeGroupId);
+            }
+
+            if (gameState.completedGroupIdsThisRound.length >= config.groups.length) {
+                evalRoundWinners();
+            } else {
+                const remainingGroups = config.groups.filter(g => !gameState.completedGroupIdsThisRound.includes(g.id));
+                gameState.activeGroupId = remainingGroups[0].id;
+                gameState.currentQuestion = 1;
+                updateTurnDisplay();
+                renderGroupScores();
+                showFeedback(true, "Turn Completed!", `Next up: ${config.groups.find(g => g.id === gameState.activeGroupId).name}`);
+                setTimeout(() => hideFeedback(), 2000);
+            }
+        }
+
+        function evalRoundWinners() {
+            playFanfareSound();
+            const currentRoundNum = gameState.currentRound;
+
+            const roundRankings = [...config.groups].map(g => {
+                const rStat = gameState.groupStats[g.id].roundStats[currentRoundNum];
+                const totalSec = rStat.rawSeconds + rStat.penaltySeconds;
+                return { group: g, totalSec, rStat };
+            }).sort((a, b) => a.totalSec - b.totalSec);
+
+            const numGroups = config.groups.length;
+            roundRankings.forEach((item, index) => {
+                const pointsEarned = Math.max(1, numGroups - index);
+                item.rStat.points = pointsEarned;
+                gameState.groupStats[item.group.id].totalPoints += pointsEarned;
+            });
+
+            document.getElementById('round-winner-title').textContent = `Round ${currentRoundNum} Completed!`;
+            const tbody = document.getElementById('round-leaderboard-body');
+            tbody.innerHTML = '';
+
+            roundRankings.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = index === 0 ? 'bg-amber-100 font-extrabold' : '';
+                tr.innerHTML = `
+                    <td class="p-3 text-center">${index === 0 ? '🥇 1st' : `${index + 1}th`}</td>
+                    <td class="p-3">${escapeHtml(item.group.name)}</td>
+                    <td class="p-3 text-center">${formatTime(item.totalSec)}</td>
+                    <td class="p-3 text-center text-brand-purple text-base font-black">+${item.rStat.points} PTS</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            renderGroupScores();
+            document.getElementById('round-winner-modal').classList.remove('hidden');
+        }
+
+        function nextRoundOrFinish() {
+            document.getElementById('round-winner-modal').classList.add('hidden');
+
+            if (gameState.currentRound < 3) {
+                gameState.currentRound++;
+                gameState.currentQuestion = 1;
+                gameState.completedGroupIdsThisRound = [];
+                gameState.activeGroupId = config.groups[0].id;
+
+                updateTurnDisplay();
+                updateIndicators();
+                renderGroupScores();
+
+                showFeedback(true, `Starting Round ${gameState.currentRound}!`, `${config.groups[0].name} prepare to start turn.`);
+                setTimeout(() => hideFeedback(), 1800);
+            } else {
+                finishGame();
+            }
+        }
+
+        function finishGame() {
+            gameState.isRunning = false;
+            clearInterval(gameState.timerInterval);
+            
+            document.getElementById('status-badge').textContent = 'Finished';
+            document.getElementById('status-badge').className = 'px-3 py-1 rounded-full text-xs font-bold bg-green-200 text-green-900 uppercase tracking-wider';
+
+            displayResultsModal();
+        }
+
+        function displayResultsModal() {
+            playFanfareSound();
+            const sortedGroups = [...config.groups].sort((a, b) => {
+                const statsA = gameState.groupStats[a.id];
+                const statsB = gameState.groupStats[b.id];
+                return statsB.totalPoints - statsA.totalPoints;
+            });
+
+            const winner = sortedGroups[0];
+            const winnerStats = gameState.groupStats[winner.id];
+
+            document.getElementById('winner-name').textContent = winner.name;
+            document.getElementById('winner-score-text').textContent = `Total Points Earned: ${winnerStats.totalPoints} PTS`;
+
+            const tbody = document.getElementById('results-table-body');
+            tbody.innerHTML = '';
+
+            sortedGroups.forEach((group, index) => {
+                const s = gameState.groupStats[group.id];
+                let grandRaw = 0;
+                let grandPenalty = 0;
+                [1, 2, 3].forEach(r => {
+                    grandRaw += s.roundStats[r].rawSeconds;
+                    grandPenalty += s.roundStats[r].penaltySeconds;
+                });
+
+                const tr = document.createElement('tr');
+                tr.className = index === 0 ? 'bg-amber-100 font-extrabold' : '';
+
+                tr.innerHTML = `
+                    <td class="p-3 text-center">${index === 0 ? '👑 1st' : `${index + 1}th`}</td>
+                    <td class="p-3">${escapeHtml(group.name)}</td>
+                    <td class="p-3 text-center text-slate-700">${formatTime(grandRaw)}</td>
+                    <td class="p-3 text-center text-brand-pink">+${grandPenalty}s</td>
+                    <td class="p-3 text-center text-brand-purple text-lg font-black">${s.totalPoints} PTS</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('results-modal').classList.remove('hidden');
+        }
+
+        function startTimer() {
+            clearInterval(gameState.timerInterval);
+
+            gameState.timerInterval = setInterval(() => {
+                gameState.elapsedSeconds++;
+                document.getElementById('timer-text').textContent = formatTime(gameState.elapsedSeconds);
+
+                const currentRoundStat = gameState.groupStats[gameState.activeGroupId]?.roundStats[gameState.currentRound];
+                if (currentRoundStat) {
+                    currentRoundStat.rawSeconds++;
+                }
+                renderGroupScores();
+            }, 1000);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateIndicators() {
+            const roundRules = config.rounds[gameState.currentRound] || { questions: 5 };
+            document.getElementById('round-indicator').textContent = `Round ${gameState.currentRound} / 3`;
+            document.getElementById('question-indicator').textContent = `Question ${gameState.currentQuestion} / ${roundRules.questions}`;
+        }
+
+        function setupEventListeners() {
+            document.getElementById('select-active-turn').onchange = (e) => {
+                gameState.activeGroupId = parseInt(e.target.value);
+                renderGroupScores();
+            };
+
+            document.getElementById('btn-start-game').onclick = openStartModal;
+            document.getElementById('btn-cancel-start').onclick = () => document.getElementById('start-modal').classList.add('hidden');
+            document.getElementById('btn-confirm-start').onclick = confirmStartGame;
+
+            document.getElementById('btn-next-round').onclick = nextRoundOrFinish;
+
+            document.getElementById('btn-toggle-bgm').onclick = toggleBGM;
+            document.getElementById('btn-fullscreen').onclick = toggleFullscreen;
+
+            document.getElementById('btn-open-settings').onclick = openSettingsModal;
+            document.getElementById('btn-close-settings').onclick = () => document.getElementById('settings-modal').classList.add('hidden');
+            document.getElementById('btn-save-settings').onclick = saveSettings;
+
+            document.getElementById('setting-num-groups').onchange = handleNumGroupsChange;
+            document.getElementById('setting-tile-type').onchange = handleTileTypeChange;
+
+            document.getElementById('btn-export-json').onclick = exportJSON;
+            document.getElementById('btn-import-json-trigger').onclick = () => document.getElementById('file-import-json').click();
+            document.getElementById('file-import-json').onchange = importJSON;
+
+            document.getElementById('btn-play-again').onclick = () => {
+                document.getElementById('results-modal').classList.add('hidden');
+                openStartModal();
+            };
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => alert("Fullscreen not allowed."));
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function openStartModal() {
+            const activeGroup = config.groups.find(g => g.id === gameState.activeGroupId);
+            document.getElementById('modal-turn-group-name').textContent = activeGroup ? activeGroup.name : 'Group 1';
+            document.getElementById('start-modal').classList.remove('hidden');
+        }
+
+        function confirmStartGame() {
+            document.getElementById('start-modal').classList.add('hidden');
+
+            gameState.isRunning = true;
+            gameState.isTurnActive = true;
+            
+            document.getElementById('status-badge').textContent = 'Playing';
+            document.getElementById('status-badge').className = 'px-3 py-1 rounded-full text-xs font-bold bg-purple-600 text-white uppercase tracking-wider animate-pulse';
+
+            renderGroupScores();
+            updateIndicators();
+            startTimer();
+            playSequence();
+        }
+
+        function openSettingsModal() {
+            document.getElementById('setting-num-groups').value = config.numGroups;
+            document.getElementById('setting-show-text').checked = config.showTextOnTiles !== false;
+
+            document.getElementById('setting-r1-q').value = config.rounds[1].questions;
+            document.getElementById('setting-r1-len').value = config.rounds[1].length;
+            document.getElementById('setting-r2-q').value = config.rounds[2].questions;
+            document.getElementById('setting-r2-len').value = config.rounds[2].length;
+            document.getElementById('setting-r3-q').value = config.rounds[3].questions;
+            document.getElementById('setting-r3-len').value = config.rounds[3].length;
+
+            document.getElementById('setting-tile-type').value = config.tileType;
+
+            renderGroupInputs();
+            renderTileConfigList();
+
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function handleNumGroupsChange(e) {
+            const count = parseInt(e.target.value);
+            config.numGroups = count;
+            
+            while (config.groups.length < count) {
+                const id = config.groups.length + 1;
+                config.groups.push({ id, name: `Group ${id}` });
+            }
+            if (config.groups.length > count) {
+                config.groups = config.groups.slice(0, count);
+            }
+
+            renderGroupInputs();
+        }
+
+        function renderGroupInputs() {
+            const container = document.getElementById('group-names-container');
+            container.innerHTML = '';
+
+            config.groups.forEach((g, index) => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Group ${index + 1} Name</label>
+                    <input type="text" data-group-id="${g.id}" value="${escapeHtml(g.name)}" class="group-name-input w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-1.5 font-bold text-slate-800">
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function handleTileTypeChange(e) {
+            config.tileType = e.target.value;
+            config.tiles = [...(DEFAULT_TILES[config.tileType] || DEFAULT_TILES.text)];
+            renderTileConfigList();
+        }
+
+        function renderTileConfigList() {
+            const container = document.getElementById('tile-config-list');
+            container.innerHTML = '';
+
+            config.tiles.forEach((tile, index) => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-white border-2 border-slate-300 rounded-xl flex flex-wrap items-center gap-3 shadow-sm';
+
+                let fields = '';
+
+                if (config.tileType === 'text') {
+                    fields = `
+                        <input type="text" value="${escapeHtml(tile.text || '')}" placeholder="Text / Word" data-index="${index}" data-field="text" class="tile-field flex-1 border-2 border-slate-300 rounded-lg px-3 py-1.5 font-bold">
+                        <input type="color" value="${tile.color || SOLID_PALETTE[index % SOLID_PALETTE.length]}" data-index="${index}" data-field="color" class="tile-field w-10 h-10 border-2 border-slate-300 rounded-lg cursor-pointer">
+                    `;
+                } else if (config.tileType === 'photo') {
+                    fields = `
+                        <input type="text" value="${escapeHtml(tile.text || '')}" placeholder="Audio Word (Optional)" data-index="${index}" data-field="text" class="tile-field w-40 border-2 border-slate-300 rounded-lg px-2 py-1 font-bold text-sm">
+                        <div class="flex-1 flex items-center gap-2">
+                            <img src="${tile.image || ''}" class="w-9 h-9 object-cover rounded-lg border border-slate-300" onerror="this.src='https://placehold.co/100x100?text=No+Img'">
+                            <input type="text" value="${escapeHtml(tile.image || '')}" placeholder="Image URL / Base64" data-index="${index}" data-field="image" class="tile-field flex-1 border-2 border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
+                        </div>
+                    `;
+                }
+
+                div.innerHTML = `
+                    <span class="w-6 h-6 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center">${index + 1}</span>
+                    ${fields}
+                    <button type="button" onclick="removeTileEntry(${index})" class="text-red-500 hover:text-red-700 font-bold px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+                `;
+
+                container.appendChild(div);
+            });
+
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl border-2 border-dashed border-slate-400 text-sm transition flex items-center justify-center gap-2';
+            addBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Vocab Tile';
+            addBtn.onclick = addTileEntry;
+            container.appendChild(addBtn);
+        }
+
+        function addTileEntry() {
+            const idx = config.tiles.length;
+            config.tiles.push({
+                id: (Date.now() + idx).toString(),
+                text: `Item ${idx + 1}`,
+                color: SOLID_PALETTE[idx % SOLID_PALETTE.length],
+                image: ''
+            });
+            renderTileConfigList();
+        }
+
+        window.removeTileEntry = function(index) {
+            if (config.tiles.length <= 4) {
+                alert("Minimum 4 items recommended to fill the 2x2 board!");
+                return;
+            }
+            config.tiles.splice(index, 1);
+            renderTileConfigList();
+        };
+
+        function saveSettings() {
+            const groupInputs = document.querySelectorAll('.group-name-input');
+            groupInputs.forEach(input => {
+                const id = parseInt(input.dataset.groupId);
+                const g = config.groups.find(item => item.id === id);
+                if (g && input.value.trim()) g.name = input.value.trim();
+            });
+
+            config.showTextOnTiles = document.getElementById('setting-show-text').checked;
+
+            config.rounds[1] = {
+                questions: parseInt(document.getElementById('setting-r1-q').value) || 5,
+                length: parseInt(document.getElementById('setting-r1-len').value) || 3
+            };
+            config.rounds[2] = {
+                questions: parseInt(document.getElementById('setting-r2-q').value) || 5,
+                length: parseInt(document.getElementById('setting-r2-len').value) || 4
+            };
+            config.rounds[3] = {
+                questions: parseInt(document.getElementById('setting-r3-q').value) || 5,
+                length: parseInt(document.getElementById('setting-r3-len').value) || 5
+            };
+
+            const tileFields = document.querySelectorAll('.tile-field');
+            tileFields.forEach(field => {
+                const idx = parseInt(field.dataset.index);
+                const prop = field.dataset.field;
+                if (config.tiles[idx]) {
+                    config.tiles[idx][prop] = field.value;
+                }
+            });
+
+            initScores();
+            gameState.currentRound = 1;
+            gameState.currentQuestion = 1;
+            gameState.activeGroupId = config.groups[0].id;
+            gameState.completedGroupIdsThisRound = [];
+
+            renderGroupScores();
+            updateTurnDisplay();
+            prepareQuestionTiles();
+
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        function exportJSON() {
+            saveSettings();
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `listen_and_click_config_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importJSON(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedConfig = JSON.parse(event.target.result);
+                    if (importedConfig.groups && importedConfig.tiles) {
+                        config = importedConfig;
+                        initScores();
+                        openSettingsModal();
+                        renderGroupScores();
+                        prepareQuestionTiles();
+                        alert("Settings imported successfully!");
+                    } else {
+                        throw new Error("Invalid format structure.");
+                    }
+                } catch (err) {
+                    alert("Error importing JSON: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>
