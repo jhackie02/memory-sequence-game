@@ -459,28 +459,29 @@
                 { id: '6', text: 'Orange', color: '#E17055' }
             ],
             photo: [
-                { id: '1', text: 'waves', image: 'https://images.pexels.com/photos/371422/pexels-photo-371422.jpeg', color: '#EB4D4B' },
-                { id: '2', text: 'soda', image: 'https://www.seriouseats.com/thmb/_TeYpV5Qi606gJfnMEL4-9KdpwI=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/20260320-SEA-FizzySoda-AmandaSuarez-c2df68c3e7314d13b1eaffda06025e9a.jpg', color: '#0984E3' },
-                { id: '3', text: 'take a bath', image: 'https://businessmirror.com.ph/wp-content/uploads/2019/04/hf03-040419.jpg', color: '#6AB04C' },
-                { id: '4', text: 'wash dishes', image: 'https://www.thetakeout.com/img/gallery/the-british-way-of-washing-dishes-might-gross-out-americans/l-intro-1745249423.jpg', color: '#F0932B' },
-                { id: '5', text: 'brush teeth', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTZj9cYahdAjZ3qns5Xj1nmU9mQs2OVvL7g3bsrx5OzaO1SzRFne2R_sU4&s=10', color: '#4834D4' },
-                { id: '6', text: 'wash clothes', image: 'https://hgtvhome.sndimg.com/content/dam/images/hgtv/stock/2022/9/GettyImages-1149017118.jpg.rend.hgtvcom.1280.960.85.suffix/1664383662182.webp', color: '#E17055' }
+                { id: '1', text: 'pencil', image: 'https://media.istockphoto.com/id/2244869722/vector/pencil-flat-illustration.jpg?s=612x612&w=0&k=20&c=IOFM4Z1X7AKvxE1ggchXomDR2LC5Cbw4xsEP-p6A24Q=', color: '#EB4D4B' },
+                { id: '2', text: 'marker', image: 'https://www.pngkey.com/png/detail/364-3642048_blue-color-marker-clip-art-dry-erase-marker.png', color: '#0984E3' },
+                { id: '3', text: 'eraser', image: 'https://cdn.vectorstock.com/i/500p/63/95/pink-school-eraser-vector-57426395.jpg', color: '#6AB04C' },
+                { id: '4', text: 'chair', image: 'https://static.vecteezy.com/system/resources/thumbnails/042/681/826/small_2x/illustration-of-wooden-mahogany-side-chair-on-white-vector.jpg', color: '#F0932B' },
+                { id: '5', text: 'glue', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTe90Vsfn9gx2tGiBZu1jnrJXvDpByO4LiYarhaKJPLcKUTyNHq78m3VIY2&s=10', color: '#4834D4' },
+                { id: '6', text: 'scissors', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTHf2ZatzrooF-zYP2NuRriQ7cPvACadpYOxOAWD-imxM35p18UnU-R2IeD&s=10', color: '#E17055' }
             ]
         };
 
         // Global Configuration
         let config = {
-            numGroups: 3,
+            numGroups: 4,
             showTextOnTiles: true,
             groups: [
                 { id: 1, name: 'Group 1' },
                 { id: 2, name: 'Group 2' },
-                { id: 3, name: 'Group 3' }
+                { id: 3, name: 'Group 3' },
+                { id: 4, name: 'Group 4' }  
             ],
             rounds: {
-                1: { questions: 5, length: 3 },
-                2: { questions: 5, length: 4 },
-                3: { questions: 5, length: 5 }
+                1: { questions: 5, length: 1 },
+                2: { questions: 5, length: 2 },
+                3: { questions: 5, length: 3 }
             },
             tileType: 'text',
             tiles: [...DEFAULT_TILES.text]
